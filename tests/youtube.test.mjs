@@ -16,3 +16,19 @@ for(const scenario of ['ready','off','delayed','hidden','unavailable','loading',
  if(scenario==='cancel'){assert.deepEqual(actions,[]);assert.equal(messages.some(m=>m.type==='failure'),false);}
  if(scenario==='delayed')assert.ok(tick>=2);
 });
+
+for(const scenario of ['off','on','late','retry','disabled','failed'])test('YouTube CC 자동 켜기: '+scenario,async()=>{
+ const actions=[],messages=[];let now=0,tick=0,on=scenario==='on',attempts=0;
+ const cc={disabled:scenario==='disabled',getAttribute(k){return k==='aria-pressed'?String(on):k==='aria-label'?'자막 사용 불가':null;},click(){actions.push('cc');attempts++;if(scenario!=='failed'&&(scenario!=='retry'||attempts===2))on=true;}};
+ const root={querySelector(s){if(s==='.setting-item-enable')return {getAttribute:()=> 'true'};if(s.startsWith('.setting-item-download'))return {getAttribute:()=>null,click(){actions.push('download');}};return null;}};
+ const document={querySelector(s){if(s==='.ytp-subtitles-button')return scenario==='late'&&tick<2?null:cc;if(s==='#immersive-translatequick-button')return {shadowRoot:root,getAttribute:()=> 'true'};if(s==='#immersive-translate-caption-window')return {shadowRoot:{querySelector:()=>on?{textContent:'번역',getClientRects:()=>[{}]}:null}};return null;}};
+ const chrome={runtime:{onMessage:{addListener(){}},async sendMessage(m){messages.push(m);return m.type==='claim-video'?{id:'cc-test',mode:'dual'}:{ok:true};}}};
+ vm.runInNewContext(await readFile('chrome-extension/youtube.mjs','utf8'),{chrome,document,Date:{now:()=>now},setTimeout(fn){now+=1000;tick++;queueMicrotask(fn);}});
+ await new Promise(r=>setImmediate(r));
+ if(scenario==='on')assert.deepEqual(actions,['download']);
+ if(['off','late'].includes(scenario))assert.deepEqual(actions,['cc','download']);
+ if(scenario==='retry')assert.deepEqual(actions,['cc','cc','download']);
+ if(scenario==='disabled')assert.deepEqual(actions,[]);
+ if(scenario==='failed')assert.deepEqual(actions,['cc','cc','cc']);
+ if(['disabled','failed'].includes(scenario))assert.equal(messages.at(-1).type,'failure');
+});

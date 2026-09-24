@@ -6,6 +6,7 @@ async function run() {
   if(!active) return;
   // Task-owned tabs may be paused by browser autoplay or other video extensions.
   let playbackAttempted=false, activationAttempted=false;
+  let captionAttempts=0, lastCaptionAttempt=-Infinity;
   const deadline=Date.now()+540000;
   while(!stopped && Date.now()<deadline) {
     const video=document.querySelector('video');
@@ -18,6 +19,18 @@ async function run() {
     const control=document.querySelector('#immersive-translatequick-button');
     const root=control?.shadowRoot;
     if(stopped)return;
+    // YouTube CC must load the source track before Immersive can translate it.
+    // The localized label can say "unavailable" even when this button works.
+    const cc=document.querySelector('.ytp-subtitles-button');
+    if(cc?.getAttribute('aria-pressed')==='false' && !cc.disabled && cc.getAttribute('aria-disabled')!=='true') {
+      if(captionAttempts<3 && Date.now()-lastCaptionAttempt>=3000) {
+        captionAttempts++;
+        lastCaptionAttempt=Date.now();
+        cc.click();
+      }
+      await sleep(1000);
+      continue;
+    }
     const toggle=root?.querySelector('.setting-item-enable');
     if(toggle?.getAttribute('aria-checked')==='false' && !activationAttempted) {
       activationAttempted=true;
