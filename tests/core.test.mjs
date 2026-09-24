@@ -46,3 +46,11 @@ test('새 파일·취소·승인·동시 변경 시 기존 데이터 보호',asy
     assert.deepEqual(await readdir(path.join(dir,'SRT')),['한글.srt']);
   }finally{await rm(dir,{recursive:true,force:true});}
 });
+
+test('공급자 SRT의 빈 구간과 연속 빈 줄을 허용하고 원문을 보존한다',()=>{
+ const value='\uFEFF1\r\n00:00:00,000 --> 00:00:01,000\r\n자막\r\n\r\n2\r\n00:00:01,000 --> 00:00:02,000\r\n \r\n\r\n3\r\n00:00:01,000 --> 00:00:02,000\r\n...\r\n\r\n4\r\n00:00:02,000 --> 00:00:03,000\r\n \r\n';
+ assert.equal(validateSrt(value),value);
+ assert.throws(()=>validateSrt(value.replace('00:00:03,000','00:00:01,000')),/시간/);
+ assert.throws(()=>validateSrt('1\n00:00:00,000 --> 00:00:01,000\n \n\n2\n00:00:01,000 --> 00:00:02,000\n'),/비어/);
+ assert.throws(()=>validateSrt(value.replace('3\r\n00:00:01','wrong\r\n00:00:01')));
+});

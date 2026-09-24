@@ -38,8 +38,9 @@ export async function saveSrt(root, rawName, text, confirmOverwrite, folder='SRT
       // Same-directory rename replaces atomically; a failed replacement preserves the old file.
       await fs.rename(tmp, target);
     } else {
-      // Atomic create without replacing a file that appeared after the existence check.
-      await fs.link(tmp, target);
+      // Exclusive copy also works on virtual drives without hard-link support.
+      // Never replace a file that appeared after the existence check.
+      await fs.copyFile(tmp, target, fs.constants.COPYFILE_EXCL);
     }
     return { status: 'saved', name };
   } finally { await fs.unlink(tmp).catch(e => { if (e.code !== 'ENOENT') console.warn('SRT 임시 파일 정리가 필요합니다.'); }); }

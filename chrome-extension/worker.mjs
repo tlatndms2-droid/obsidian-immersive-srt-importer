@@ -36,8 +36,8 @@ async function connect() {
     let m; try{m=JSON.parse(e.data);}catch{return;}
     if(m.type==='ready'){isConnecting=false; await setStatus('Obsidian에 연결됨'); clearInterval(heartbeat); heartbeat=setInterval(()=>send({type:'ping'}),20000);}
     if(m.type==='job') {
-      if(job || videoUrl(m.url)!==m.url || typeof m.id!=='string') { send({type:'error',id:m.id,url:m.url}); return; }
-      job={id:m.id,url:m.url,phase:'video',mode:null};
+      if(job || videoUrl(m.url)!==m.url || typeof m.id!=='string' || !['original','translation','dual'].includes(m.mode)) { send({type:'error',id:m.id,url:m.url}); return; }
+      job={id:m.id,url:m.url,phase:'video',mode:m.mode};
       const current=job;
       current.timer=setTimeout(()=>void fail('자막 처리 시간이 초과되었습니다. 자동 재시도하지 않습니다.'),590000);
       await setStatus('YouTube에서 Immersive Translate 자막을 준비하고 있습니다.');
@@ -64,12 +64,8 @@ chrome.runtime.onMessage.addListener((m,sender,reply)=>{
   }
   if(popup && m.type==='unpair') {(async()=>{await chrome.storage.local.remove('pair'); await cleanup(false); socket?.close(); await setStatus('연결 안 됨'); reply({ok:true});})();return true;}
   if(!sender.tab || sender.frameId!==0 || !job) {reply(null);return;}
-  if(m.type==='claim-video' && sender.tab.id===job.videoTab && videoUrl(sender.url)===job.url && job.phase==='video') {progress('preparing');reply({id:job.id,url:job.url});return;}
-  if(m.type==='video-progress' && m.id===job.id && sender.tab.id===job.videoTab && videoUrl(sender.url)===job.url && job.phase==='video' && m.stage==='requesting-ai') {
-    progress('ai');
-    void setStatus('AI 자막을 요청하고 있습니다. Chrome에 확인 안내가 뜨면 확인해 주세요. 생성 완료 후 SRT 저장을 이어갑니다.');reply({ok:true});return;
-  }
-  if(m.type==='video-ready' && m.id===job.id && sender.tab.id===job.videoTab && videoUrl(sender.url)===job.url && ['dual','translation'].includes(m.mode)) {
+  if(m.type==='claim-video' && sender.tab.id===job.videoTab && videoUrl(sender.url)===job.url && job.phase==='video') {progress('preparing');reply({id:job.id,url:job.url,mode:job.mode});return;}
+  if(m.type==='video-ready' && m.id===job.id && sender.tab.id===job.videoTab && videoUrl(sender.url)===job.url && job.phase==='video' && m.mode===job.mode) {
     job.mode=m.mode; job.phase='result'; progress('result');reply({ok:true}); void setStatus('공식 자막 다운로드 페이지를 준비하고 있습니다.'); return;
   }
   if(m.type==='claim-result' && job.phase==='result' && resultSource(sender.url)===job.url && (!job.resultTab || job.resultTab===sender.tab.id) && job.newTabs?.has(sender.tab.id) && sender.tab.windowId===job.windowId) {

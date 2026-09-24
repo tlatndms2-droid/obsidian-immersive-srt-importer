@@ -15,6 +15,7 @@ async function run() {
   const deadline=Date.now()+540000;
   await chrome.runtime.sendMessage({type:'result-progress',id:job.id,stage:'translation'});
   while(!stopped && Date.now()<deadline) {
+    if(job.mode==='original' && document.querySelector('table tbody tr')) break;
     if(/번역 완료|Translation completed|Translation complete|翻译完成|翻譯完成/i.test(document.body?.innerText||'')) break;
     await sleep(1000);
   }
@@ -22,7 +23,7 @@ async function run() {
   if(Date.now()>=deadline) throw Error('Immersive Translate 번역 완료를 확인하지 못했습니다.');
   await chrome.runtime.sendMessage({type:'result-progress',id:job.id,stage:'exporting'});
   // The site's export buttons exist inside its responsive menu even when collapsed.
-  const labels=job.mode==='dual'?/^(수출 이중|이중.*내보내기|Export Bilingual|Export Dual|导出双语|匯出雙語)$/i:/^(번역만 내보내기|Export Translation Only|Export Translation|导出译文|匯出譯文)$/i;
+  const labels=job.mode==='original'?/^(원본 자막 내보내기|Export Original|Export Original Subtitles|导出原文|匯出原文)$/i:job.mode==='dual'?/^(수출 이중|이중.*내보내기|Export Bilingual|Export Dual|导出双语|匯出雙語)$/i:/^(번역만 내보내기|Export Translation Only|Export Translation|导出译文|匯出譯文)$/i;
   const buttons=Array.from(document.querySelectorAll('button')).filter(e=>labels.test(e.textContent.trim()));
   if(buttons.length!==1) throw Error('현재 자막 구성에 맞는 내보내기 버튼을 확인하지 못했습니다.');
   const nonce=Array.from(crypto.getRandomValues(new Uint8Array(16)),v=>v.toString(16).padStart(2,'0')).join('');

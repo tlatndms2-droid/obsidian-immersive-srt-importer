@@ -21,15 +21,18 @@ export function safeFilename(input) {
 }
 export function validateSrt(text) {
   if (typeof text !== 'string' || new TextEncoder().encode(text).length > MAX_BYTES || text.includes('\0')) throw Error('SRT 크기 또는 내용이 올바르지 않습니다.');
-  const blocks = text.replace(/^\uFEFF/, '').trim().split(/\r?\n[ \t]*\r?\n/);
+  const blocks = text.replace(/^\uFEFF/, '').trim().split(/\r?\n(?:[ \t]*\r?\n)+/);
   const stamp = '(\\d{2,}):([0-5]\\d):([0-5]\\d),(\\d{3})';
   const timing = new RegExp(`^${stamp} --> ${stamp}(?:[ \\t]+.*)?$`);
+  let hasContent = false;
   for (const block of blocks) {
     const lines = block.split(/\r?\n/);
     const m = lines[1]?.match(timing);
-    if (!/^\d+$/.test(lines[0]) || !m || !lines.slice(2).join('').trim()) throw Error('정상적인 SRT 자막이 아닙니다.');
+    if (!/^\d+$/.test(lines[0]) || !m) throw Error('정상적인 SRT 자막이 아닙니다.');
+    if (lines.slice(2).join('').trim()) hasContent = true;
     const ms = i => Number(m[i]) * 3600000 + Number(m[i + 1]) * 60000 + Number(m[i + 2]) * 1000 + Number(m[i + 3]);
     if (ms(5) < ms(1)) throw Error('SRT 자막 시간이 올바르지 않습니다.');
   }
+  if (!hasContent) throw Error('자막 내용이 비어 있습니다.');
   return text;
 }

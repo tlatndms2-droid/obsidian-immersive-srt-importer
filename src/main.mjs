@@ -4,6 +4,17 @@ import { Bridge } from './bridge.mjs';
 import { saveSrt, storageFolder } from './storage.mjs';
 import { videoUrl } from './shared.mjs';
 
+class SubtitleModeModal extends Modal {
+  constructor(app, resolve) { super(app); this.resolve=resolve; this.value=null; }
+  onOpen() {
+    this.titleEl.setText('가져올 자막 선택');
+    for(const [value,name,desc] of [['original','원문만','영상의 원래 언어 자막'],['translation','번역만','현재 설정된 번역 언어의 자막'],['dual','원문+번역','원문과 번역을 함께 저장']]) {
+      new Setting(this.contentEl).setName(name).setDesc(desc).addButton(b=>b.setButtonText(name).onClick(()=>{this.value=value;this.close();}));
+    }
+    new Setting(this.contentEl).addButton(b=>b.setButtonText('취소').onClick(()=>this.close()));
+  }
+  onClose() { this.resolve(this.value); this.contentEl.empty(); }
+}
 class OverwriteModal extends Modal {
   constructor(app, name, resolve) { super(app); this.name = name; this.resolve = resolve; this.accepted = false; }
   onOpen() {
@@ -74,11 +85,16 @@ export default class ImmersiveSrt extends Plugin {
   async importUrl(url) {
     if(this.importing){new Notice('진행 중인 자막 가져오기가 있습니다.');return;}
     this.importing=true;
+    const mode=await new Promise(resolve=>{
+      const modal=new SubtitleModeModal(this.app,value=>{this.activeModals.delete(modal);resolve(value);});
+      this.activeModals.add(modal);modal.open();
+    });
+    if(!mode || this.unloaded){this.importing=false;return;}
     clearTimeout(this.noticeTimer);this.progressNotice?.hide();
     const notice=this.progressNotice=new Notice('자막 가져오기를 시작하는 중…',0);
     try {
       this.importFolder=storageFolder(this.data.outputFolder);
-      const result=await this.bridge.run(url,message=>notice.setMessage(message==='SRT 폴더에 저장하는 중…'?`${this.importFolder} 폴더에 저장하는 중…`:message));
+      const result=await this.bridge.run(url,message=>notice.setMessage(message==='SRT 폴더에 저장하는 중…'?`${this.importFolder} 폴더에 저장하는 중…`:message),mode);
       notice.setMessage(result.status==='saved'?`${this.importFolder} 폴더에 저장 완료`:'저장을 취소했습니다. 기존 파일은 유지됩니다.');
     } catch(e){notice.setMessage(e.message || '자막을 가져오지 못했습니다.');}
     finally{this.importing=false;if(!this.unloaded)this.noticeTimer=setTimeout(()=>notice.hide(),8000);}

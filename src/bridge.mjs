@@ -63,7 +63,8 @@ export class Bridge {
     });
     ws.on('close', () => { clearTimeout(timer); if (this.peer === ws) { this.peer = null; this.onStatus('연결 안 됨'); if (!this.pending?.finishing) this.finish(Error('Chrome 연결이 끊겼습니다.')); } });
   }
-  run(input, onProgress) {
+  run(input, onProgress, mode='dual') {
+    if(!['original','translation','dual'].includes(mode))return Promise.reject(Error('자막 구성을 선택해 주세요.'));
     const url = videoUrl(input);
     if (!url) return Promise.reject(Error('지원하는 YouTube 영상이 아닙니다.'));
     if (this.pending) return Promise.reject(Error('진행 중인 자막 가져오기가 있습니다.'));
@@ -73,7 +74,7 @@ export class Bridge {
       const timer = setTimeout(() => { this.peer?.send(JSON.stringify({type:'cancel', id})); this.finish(Error('자막 처리 시간이 초과되었습니다. 자동 재시도하지 않습니다.')); }, this.timeoutMs);
       this.pending = { id, url, timer, resolve, reject, finishing: false, onProgress, progressRank:0 };
       onProgress?.(PROGRESS.opening);
-      this.peer.send(JSON.stringify({ type: 'job', id, url }));
+      this.peer.send(JSON.stringify({ type: 'job', id, url, mode }));
     });
   }
   finish(error, result) {

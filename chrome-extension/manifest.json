@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "Immersive SRT — Obsidian 연결",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "minimum_chrome_version": "116",
   "description": "Obsidian에서 요청한 영상의 Immersive Translate SRT를 같은 PC의 Vault로 전달합니다.",
   "permissions": ["storage", "alarms"],
