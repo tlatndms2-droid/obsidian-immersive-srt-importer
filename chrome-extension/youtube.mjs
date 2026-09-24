@@ -5,7 +5,7 @@ async function run() {
   for(let i=0;i<30;i++) { active=await chrome.runtime.sendMessage({type:'claim-video'}); if(active) break; await sleep(1000); }
   if(!active) return;
   // Task-owned tabs may be paused by browser autoplay or other video extensions.
-  let playbackAttempted=false;
+  let playbackAttempted=false, activationAttempted=false;
   const deadline=Date.now()+540000;
   while(!stopped && Date.now()<deadline) {
     const video=document.querySelector('video');
@@ -18,8 +18,22 @@ async function run() {
     const control=document.querySelector('#immersive-translatequick-button');
     const root=control?.shadowRoot;
     if(stopped)return;
+    const toggle=root?.querySelector('.setting-item-enable');
+    if(toggle?.getAttribute('aria-checked')==='false' && !activationAttempted) {
+      activationAttempted=true;
+      toggle.click();
+      await sleep(1000);
+      continue;
+    }
+    const captions=document.querySelector('#immersive-translate-caption-window')?.shadowRoot;
+    const cue=captions?.querySelector('.target-cue');
+    // Enabled menu items do not mean the subtitle track has finished loading.
+    if(toggle?.getAttribute('aria-checked')!=='true' || !cue?.textContent?.trim() || !cue.getClientRects().length) {
+      await sleep(1000);
+      continue;
+    }
     if(root && control.getAttribute('data-immersive-translate-has-subtitle')==='true') {
-      // Use the vendor's current export preferences, independent of visible cues.
+      // Preserve the composition selected in Obsidian.
       const mode=active.mode;
       const download=root.querySelector('.setting-item-download:not(.disabled):not(.download-subtitle-loading)');
       if(!download || download.getAttribute('aria-disabled')==='true') {await sleep(1000);continue;}
