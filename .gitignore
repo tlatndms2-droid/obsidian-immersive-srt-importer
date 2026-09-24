@@ -1,0 +1,7 @@
+node_modules/
+dist/
+artifacts/
+.sandbox/
+main.js
+*.log
+Immersive_Translate_SRT_Importer_Planning_Pack.zip

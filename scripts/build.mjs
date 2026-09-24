@@ -1,0 +1,11 @@
+import { build } from 'esbuild';
+import { mkdir, copyFile, readFile } from 'node:fs/promises';
+const plugin=JSON.parse(await readFile('manifest.json','utf8'));
+const extension=JSON.parse(await readFile('chrome-extension/manifest.json','utf8'));
+if(plugin.version!==extension.version) throw Error('Versions must match');
+await mkdir('dist/obsidian/immersive-srt-importer',{recursive:true});
+await mkdir('dist/chrome-extension',{recursive:true});
+await build({entryPoints:['src/main.mjs'],outfile:'main.js',bundle:true,platform:'node',format:'cjs',target:'es2022',external:['obsidian','bufferutil','utf-8-validate'],logLevel:'info'});
+for(const file of ['main.js','manifest.json','styles.css']) await copyFile(file,`dist/obsidian/immersive-srt-importer/${file}`);
+for(const entry of ['worker','youtube','download','capture','popup']) await build({entryPoints:[`chrome-extension/${entry}.mjs`],outfile:`dist/chrome-extension/${entry}.js`,bundle:true,platform:'browser',format:entry==='worker'?'esm':'iife',target:'chrome116',logLevel:'info'});
+for(const file of ['manifest.json','popup.html','popup.css']) await copyFile(`chrome-extension/${file}`,`dist/chrome-extension/${file}`);

@@ -1,0 +1,16 @@
+{
+  "manifest_version": 3,
+  "name": "Immersive SRT — Obsidian 연결",
+  "version": "0.1.1",
+  "minimum_chrome_version": "116",
+  "description": "Obsidian에서 요청한 영상의 Immersive Translate SRT를 같은 PC의 Vault로 전달합니다.",
+  "permissions": ["storage", "alarms"],
+  "host_permissions": ["http://127.0.0.1/*", "https://www.youtube.com/*", "https://app.immersivetranslate.com/download-subtitle/*"],
+  "background": { "service_worker": "worker.js", "type": "module" },
+  "action": { "default_title": "Immersive SRT 연결", "default_popup": "popup.html" },
+  "content_scripts": [
+    { "matches": ["https://www.youtube.com/*"], "js": ["youtube.js"], "run_at": "document_idle" },
+    { "matches": ["https://app.immersivetranslate.com/download-subtitle/*"], "js": ["capture.js"], "world": "MAIN", "run_at": "document_start" },
+    { "matches": ["https://app.immersivetranslate.com/download-subtitle/*"], "js": ["download.js"], "run_at": "document_start" }
+  ]
+}
